@@ -81,7 +81,7 @@ class ConstraintChain():
             return random.choice(var).value
         n = self.graph.get_node(prefix[-1])
         intersection = self.get_allowed_continuation(n, var)
-        for v in reversed(prefix):
+        for v in reversed(prefix[:-1]):
             try:
                 son = n.sons[v]
                 new_intersection = self.get_allowed_continuation(son, var)
