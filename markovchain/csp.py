@@ -1,5 +1,6 @@
 from datetime import datetime
 import random
+import logging, sys
 
 __author__ = 'Gabriele'
 
@@ -23,6 +24,7 @@ class ConstraintChain():
         self.graph = model
         self._dac_achieved = False
         self._tag = 0
+        self._logger = logging.getLogger(__name__)
 
     def achieve_dac(self):
         """
@@ -33,7 +35,7 @@ class ConstraintChain():
         for i in xrange(l - 1, 0, -1):
             self.revise(i - 1, i)
         self._dac_achieved = True
-        print "Sequence length: {:}\t(Directed) Arc Consistency: {:}".format(l, datetime.now() - dac_start)
+        self._logger.info("Sequence length: {:}\t(Directed) Arc Consistency: {:}".format(l, datetime.now() - dac_start))
 
     def revise(self, j, i):
         """
@@ -64,21 +66,35 @@ class ConstraintChain():
 
         self._node_variables[j] = filtered
 
-    def get_sequence(self):
+    def get_sequence_and_order(self):
         """
-        Generate a constrained sequence
+        Generate a constrained sequence and the maximum markov orders
         """
         if not self._dac_achieved:
             self.achieve_dac()
         output = []
+        orders = []
         for var in self._node_variables:
-            item = self.get_item(output, var)
+            item, order = self.get_item(output, var)
             output.append(item)
-        return output
+            orders.append(order)
+        self._logger.debug('markov max orders: ' + str(orders))
+        return output, orders
+
+    def get_sequence(self):
+        """
+        Generate a constrained sequence
+        """
+        return self.get_sequence_and_order()[0]
 
     def get_item(self, prefix, var):
+        """
+        Generate an item from the input variable according to the prefix
+        """
+        order = 0
         if not prefix:
-            return random.choice(var).value
+            return random.choice(var).value, order
+        order += 1
         n = self.graph.get_node(prefix[-1])
         intersection = self.get_allowed_continuation(n, var)
         for v in reversed(prefix[:-1]):
@@ -87,11 +103,12 @@ class ConstraintChain():
                 new_intersection = self.get_allowed_continuation(son, var)
                 if not new_intersection:
                     break
+                order += 1
                 n = son
                 intersection = new_intersection
             except KeyError:
                 break
-        return n.generate_item(intersection)
+        return n.generate_item(intersection), order
 
     def get_allowed_continuation(self, node, var):
         """
@@ -108,3 +125,21 @@ class ConstraintChain():
         Get the values of the csp variables
         """
         return [[n.value for n in node_var] for node_var in self._node_variables]
+
+if __name__ == '__main__':
+
+    from markov import MarkovTree
+    FORMAT = '[%(levelname).1s] %(asctime)s.%(msecs)d %(name)s: %(message)s'
+    DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
+    logging.basicConfig(level=logging.DEBUG, format=FORMAT, stream=sys.stdout, datefmt=DATE_FORMAT)
+
+    mt = MarkovTree(2)
+    s = 'missisipix'
+    mt.parse(s)
+    domain = ['m', 'i', 's', 'p', 'x']
+    variables = [domain for i in xrange(14)]
+    variables.append(['s'])
+    c = ConstraintChain(variables, mt)
+    c.achieve_dac()
+    for i in xrange(10):
+        seq = c.get_sequence()
