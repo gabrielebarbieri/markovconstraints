@@ -1,8 +1,8 @@
 __author__ = 'Gabriele'
 
 import unittest
-from markovchain.markov import MarkovNode, MarkovTree
-from markovchain.csp import ConstraintChain, InconsistentArcException
+from markovchain.suffixmarkov import MarkovNode, MarkovTree
+from markovchain.oldcsp import ConstraintChain, InconsistentArcException
 
 
 class TestMarkovNode(unittest.TestCase):
