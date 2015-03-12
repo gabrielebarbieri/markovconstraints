@@ -1,37 +1,58 @@
-__author__ = 'gabrielebarbieri'
+# -*- coding: utf-8 -*-
 
 from collections import defaultdict
 import random
 
+__author__ = 'Gabriele'
 
-class MarkovProcess():
 
-    def __init__(self, order):
-        self.order = order
-        self.transitions = defaultdict(lambda: defaultdict(int))
-        self.transposed = defaultdict(lambda: defaultdict(int))
+class MarkovNode():
+    """
+    A node in a Markov Suffix Tree
+    """
 
-    def parse(self, sequence):
-        for k in xrange(self.order + 1):
-            for i in xrange(len(sequence) - k):
-                self._parse_sub_sequence(sequence[i:i+k+1])
+    def __init__(self, value):
+        self.value = value
+        self.continuations = []
+        self.probabilities = {}
+        self.sons = {}
+        self.tag = -1
 
-    def _parse_sub_sequence(self, seq):
-        prefix = tuple(seq[:-1])
-        e = seq[-1]
-        self.transitions[prefix][e] += 1
-        if len(prefix) is self.order:
-            self.transposed[e][prefix] += 1
+    def add_continuation(self, c):
+        """
+        Add a continuation and increment its frequency
+        """
+        try:
+            self.probabilities[c.value] += 1
+        except KeyError:
+            self.probabilities[c.value] = 1
+            self.continuations.append(c)
+
+    def get_son(self, value):
+        """
+        Get the son corresponding to the given value. Create it if it does not exist
+        """
+        try:
+            return self.sons[value]
+        except KeyError:
+            son = MarkovNode(value)
+            self.sons[value] = son
+            return son
 
     def __repr__(self):
-        rep = ''
-        for k in xrange(self.order + 1):
-            for prefix, trans in self.transitions.items():
-                if len(prefix) is k:
-                    rep += str(prefix) + ': ' + str(dict(trans)) + '\n'
-        return rep[:-1]
+        return "{:} -> {:}".format(self.value, dict(self.probabilities))
 
-    def generate_item(self, prefix, allowed):
+    def recursive_rep(self, depth=0, father=''):
+        """
+        Represent the node and all its sons recursively
+        """
+        s = '  ' * depth
+        s += "{:} -> {:}\n".format(self.value + father, dict(self.probabilities))
+        for son in self.sons.values():
+            s += son.recursive_rep(depth + 1, self.value + father)
+        return s
+
+    def generate_item(self, allowed):
         """
         Generate a new items drawing from the allowed item according to the node probabilities
         Note: does not work if allowed contains duplicated items
@@ -39,10 +60,9 @@ class MarkovProcess():
         """
         total = 0
         weights = {}
-        frequencies = self.transitions[prefix]
         for v in allowed:
-            if v in frequencies:
-                p = frequencies[v]
+            if v in self.probabilities:
+                p = self.probabilities[v]
                 weights[v] = p
                 total += p
         rnd = random.random() * total
@@ -51,12 +71,52 @@ class MarkovProcess():
             if rnd < 0:
                 return k
 
-if __name__ == '__main__':
-    s = 'mississipix'
-    mt = MarkovProcess(2)
-    mt.parse(s)
-    # print mt
-    res = defaultdict(int)
-    for l in xrange(100):
-        res[mt.generate_item(tuple('i'), ['s', 'x'])] += 1
-    print dict(res)
+    def parse_prefix(self, prefix):
+        """
+        Parse the prefix sequence and create the sons accordingly. Return the created nodes
+        """
+        n = self
+        parsed = []
+        for v in reversed(prefix):
+            if v:
+                n = n.get_son(v)
+                parsed.append(n)
+        return parsed
+
+
+class MarkovTree():
+    """
+    A suffix tree structure for representing all variable-length Markov chains of input data.
+    Each data is the root of a tree structure (Node). Sons of this node represent the ancestors of the data in some
+    input sequence.
+    """
+    def __init__(self, order=2):
+        self.max_order = order
+        self.alphabet = {}
+
+    def parse(self, values):
+        """
+        Parse the list of value and update the tree
+        """
+        for i, v in enumerate(values):
+            node = self.get_node(v)
+            prefix = values[max(0, i - self.max_order + 1): i]
+            suffix = values[i+1: i+2]
+            sons = node.parse_prefix(prefix)
+            if suffix:
+                cont = self.get_node(suffix[0])
+                node.add_continuation(cont)
+                for son in sons:
+                    son.add_continuation(cont)
+
+    def get_node(self, v):
+        """
+        Get the root node in the tree corresponding to the given value. Create the node if it does not exist
+        """
+        return self.alphabet.setdefault(v, MarkovNode(v))
+
+    def __repr__(self):
+        s = ''
+        for node in self.alphabet.values():
+            s += node.recursive_rep()
+        return s

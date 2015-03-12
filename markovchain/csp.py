@@ -1,31 +1,17 @@
-__author__ = 'gabrielebarbieri'
-import logging
 from datetime import datetime
-from markov import MarkovProcess
+import random
+import logging
+import sys
+
+__author__ = 'Gabriele'
 
 
-class Value():
-
-    def __init__(self, value, csp_size):
-        self.value = value
-        self.domains = [False] * csp_size
-        self.ins = [False] * csp_size
-        self.outs = [{} for d in xrange(csp_size)]
-
-    def __repr__(self):
-        return str(self.value)
-
-    def link(self, suffix, pos):
-        self.outs[pos][suffix] = 1
-        suffix.ins[pos + 1] = True
-
-
-def accept(prefix, i):
-    for k, v in enumerate(reversed(prefix)):
-        j = i - k - 1
-        if not v.domains[j]:
-            return False
-    return True
+class InconsistentArcException(Exception):
+    """
+    Exception thrown by the dac algorithm if the generation space is empty, i.e. the generator is not able to generate
+    a new sequence.
+    """
+    pass
 
 
 class ConstraintChain():
@@ -33,96 +19,132 @@ class ConstraintChain():
     A Constraint Chain: two adjacent variables are constrained by a Markov Constrain.
     """
 
-    def __init__(self, variables, order):
-        self.size = len(variables)
-        self.variables = []
-        self.alphabet = {}
-        self.markov_process = MarkovProcess(order)
+    def __init__(self, variables, model):
+        # Convert values to nodes and fill the csp variables
+        self._node_variables = [[model.get_node(value) for value in variable] for variable in variables]
+        self.graph = model
         self._dac_achieved = False
+        self._tag = 0
         self._logger = logging.getLogger(__name__)
-        self._init_variables(variables)
-
-    def _init_variables(self, variables):
-        for i, values in enumerate(variables):
-            domain = []
-            for v in values:
-                value = self.get_value(v)
-                value.domains[i] = True
-                domain.append(value)
-            self.variables.append(domain)
-
-    def get_value(self, v):
-        return self.alphabet.setdefault(v, Value(v, self.size))
-
-    def parse(self, sequence):
-        self.markov_process.parse([self.get_value(v) for v in sequence])
 
     def achieve_dac(self):
         """
         Achieve directional arc consistency. Exploits the chain structure to have optimal constraint propagation
         """
         dac_start = datetime.now()
-        for i in reversed(xrange(self.markov_process.order, self.size)):
+        l = len(self._node_variables)
+        for i in xrange(l - 1, 0, -1):
             self.revise(i)
         self._dac_achieved = True
-        dac_time = datetime.now() - dac_start
-        self._logger.info("Sequence length: {:}\t(Directed) Arc Consistency: {:}".format(self.size, dac_time))
+        self._logger.info("Sequence length: {:}\t(Directed) Arc Consistency: {:}".format(l, datetime.now() - dac_start))
 
     def revise(self, i):
         """
-        Delete values from the domain of the prefixes of xi to obtain arc-consistency
-        :param i: the variable index
-        :return:
+        Delete values from the domain of xj until the directed arc (xj,xi) is arc-consistent on the direction j->i
         """
-        for y in self.variables[i]:
-            for prefix in self.markov_process.transposed[y]:
-                if accept(prefix, i):
-                    current = y
-                    for k, v in enumerate(reversed(prefix)):
-                        v.link(current, i - k - 1)
-                        current = v
 
-        # filter domains by excluding non linked values
-        for k in xrange(self.markov_process.order - 1):
-            j = i - k - 1
-            self.variables[j] = [v for v in self.variables[j] if v.ins[j] and v.outs[j]]
+        xj = self._node_variables[i-1]
+        xi = self._node_variables[i]
+        self._tag += 1
 
-        # the case of the small index is special (it does not have incoming links yet)
-        j = i - self.markov_process.order
-        self.variables[j] = [v for v in self.variables[j] if v.outs[j]]
+        for y in xi:
+            y.tag = self._tag
 
-    def __repr__(self):
-        links = []
-        for i, variable in enumerate(self.variables):
-            di = []
-            for value in variable:
-                if value.outs[i].keys():
-                    di.append('{:}->{:}'.format(value, value.outs[i].keys()))
-                else:
-                    di.append(str(value))
-            links.append(str(i) + ' ' + str(di))
-        return '\n'.join(links)
+        filtered = []
+        for x in xj:
+            add = False
+            for y in x.continuations:
+                if y.tag == self._tag:
+                    add = True
+                    break
+            if add:
+                filtered.append(x)
+
+        if not filtered:
+            vj = [n.value for n in xj]
+            vi = [n.value for n in xi]
+            raise InconsistentArcException("{:}->{:}".format(vj, vi))
+
+        self._node_variables[i-1] = filtered
 
     def get_sequence(self):
+        """
+        Generate a constrained sequence
+        """
+        return self.get_sequence_and_order()[0]
+
+    def get_sequence_and_order(self):
+        """
+        Generate a constrained sequence and the maximum markov orders
+        """
         if not self._dac_achieved:
             self.achieve_dac()
-        sequence = []
-        for variable in self.variables:
-            prefix = tuple(sequence[-self.markov_process.order:])
-            item = self.markov_process.generate_item(prefix, variable)
-            sequence.append(item)
+        output = []
+        orders = []
+        for var in self._node_variables:
+            item, order = self.get_item(output, var)
+            output.append(item)
+            orders.append(order)
+        self._logger.debug('markov max orders: ' + str(orders))
+        return output, orders
 
-        return sequence
+    def get_item(self, prefix, var):
+        """
+        Generate an item from the input variable according to the prefix
+        """
+        order = 0
+        if not prefix:
+            return random.choice(var).value, order
+        order += 1
+        n = self.graph.get_node(prefix[-1])
+        intersection = self.get_allowed_continuation(n, var)
+        for v in reversed(prefix[:-1]):
+            try:
+                son = n.sons[v]
+                new_intersection = self.get_allowed_continuation(son, var)
+                if not new_intersection:
+                    break
+                order += 1
+                n = son
+                intersection = new_intersection
+            except KeyError:
+                break
+        return n.generate_item(intersection), order
 
+    def get_allowed_continuation(self, node, var):
+        """
+        Get the intersection between the node continuations and the values in var
+        """
+        self._tag += 1
+        for v in var:
+            v.tag = self._tag
+
+        return [n.value for n in node.continuations if n.tag == self._tag]
+
+    def get_variables(self):
+        """
+        Get the values of the csp variables
+        """
+        return [[n.value for n in node_var] for node_var in self._node_variables]
 
 if __name__ == '__main__':
 
-    d = ['a', 'b', 'c']
-    vs = [d for l in xrange(4)]
-    vs.append(['a'])
-    csp = ConstraintChain(vs, 2)
-    corpus = ['bab', 'aba', 'cba', 'abc']
-    for seq in corpus:
-        csp.parse(seq)
-    for i in xrange(10):
-        print csp.get_sequence()
+    from markov import MarkovTree
+    FORMAT = '[%(levelname).1s] %(asctime)s.%(msecs)d %(name)s: %(message)s'
+    DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
+    logging.basicConfig(level=logging.INFO, format=FORMAT, stream=sys.stdout, datefmt=DATE_FORMAT)
+
+    mt = MarkovTree(2)
+    s = 'missisipix'
+    mt.parse(s)
+    domain = ['m', 'i', 's', 'p', 'x']
+    vs = [domain for k in xrange(14)]
+    vs.append(['s'])
+    c = ConstraintChain(vs, mt)
+    c.achieve_dac()
+    seqs = [c.get_sequence_and_order() for k in xrange(10)]
+    for seq, ords in seqs:
+        print '  '.join(str(o) for o in ords)
+        print '  '.join(seq)
+        print
+    print mt
