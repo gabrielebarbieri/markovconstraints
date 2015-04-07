@@ -77,7 +77,7 @@ class MarkovAutomaton():
             #         a1.state = qi
             #         qi.incoming += q.incoming
             #         print qi, q
-            
+
             #     if exists q' in Q such that q and q' are equivalent then
             #         Merge q with q'
             #         Q(a1) <- q'; a(q') <- a(q') U a(q)
