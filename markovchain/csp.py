@@ -14,17 +14,18 @@ class InconsistentArcException(Exception):
     pass
 
 
-class ConstraintChain():
+class ConstraintChain:
     """
     A Constraint Chain: two adjacent variables are constrained by a Markov Constrain.
     """
+
+    _tag = 0
 
     def __init__(self, variables, model):
         # Convert values to nodes and fill the csp variables
         self._node_variables = [[model.get_node(value) for value in variable] for variable in variables]
         self.graph = model
         self._dac_achieved = False
-        self._tag = 0
         self._logger = logging.getLogger(__name__)
 
     def achieve_dac(self):
@@ -45,16 +46,16 @@ class ConstraintChain():
 
         xj = self._node_variables[i-1]
         xi = self._node_variables[i]
-        self._tag += 1
+        ConstraintChain._tag += 1
 
         for y in xi:
-            y.tag = self._tag
+            y.tag = ConstraintChain._tag
 
         filtered = []
         for x in xj:
             add = False
             for y in x.continuations:
-                if y.tag == self._tag:
+                if y.tag == ConstraintChain._tag:
                     add = True
                     break
             if add:
@@ -115,11 +116,11 @@ class ConstraintChain():
         """
         Get the intersection between the node continuations and the values in var
         """
-        self._tag += 1
+        ConstraintChain._tag += 1
         for v in var:
-            v.tag = self._tag
+            v.tag = ConstraintChain._tag
 
-        return [n.value for n in node.continuations if n.tag == self._tag]
+        return [n.value for n in node.continuations if n.tag == ConstraintChain._tag]
 
     def get_variables(self):
         """
