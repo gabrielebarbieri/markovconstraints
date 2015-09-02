@@ -5,8 +5,10 @@ import random
 
 __author__ = 'Gabriele'
 
+MIN_ACCEPTED_FREQUENCY = 2
 
-class MarkovNode():
+
+class MarkovNode:
     """
     A node in a Markov Suffix Tree
     """
@@ -14,7 +16,7 @@ class MarkovNode():
     def __init__(self, value):
         self.value = value
         self.continuations = []
-        self.probabilities = {}
+        self.probabilities = defaultdict(int)
         self.sons = {}
         self.tag = -1
 
@@ -22,10 +24,9 @@ class MarkovNode():
         """
         Add a continuation and increment its frequency
         """
-        try:
-            self.probabilities[c.value] += 1
-        except KeyError:
-            self.probabilities[c.value] = 1
+        p = self.probabilities[c.value] + 1
+        self.probabilities[c.value] = p
+        if p == MIN_ACCEPTED_FREQUENCY:
             self.continuations.append(c)
 
     def get_son(self, value):
@@ -84,7 +85,7 @@ class MarkovNode():
         return parsed
 
 
-class MarkovTree():
+class MarkovTree:
     """
     A suffix tree structure for representing all variable-length Markov chains of input data.
     Each data is the root of a tree structure (Node). Sons of this node represent the ancestors of the data in some
