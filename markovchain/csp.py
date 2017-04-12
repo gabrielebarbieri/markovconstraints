@@ -8,7 +8,8 @@ __author__ = 'Gabriele'
 
 class InconsistentArcException(Exception):
     """
-    Exception thrown by the dac algorithm if the generation space is empty, i.e. the generator is not able to generate
+    Exception thrown by the dac algorithm if the generation space is empty,
+    i.e. the generator is not able to generate
     a new sequence.
     """
     pass
@@ -39,6 +40,7 @@ class ConstraintChain:
         self._dac_achieved = True
         self._logger.info("Sequence length: {:}\t(Directed) Arc Consistency: {:}".format(l, datetime.now() - dac_start))
 
+
     def revise(self, i):
         """
         Delete values from the domain of xj until the directed arc (xj,xi) is arc-consistent on the direction j->i
@@ -66,7 +68,7 @@ class ConstraintChain:
             vi = [n.value for n in xi]
             raise InconsistentArcException("{:}->{:}".format(vj, vi))
 
-        self._node_variables[i-1] = filtered
+        self._node_variables[i - 1] = filtered
 
     def get_sequence(self):
         """
@@ -128,9 +130,11 @@ class ConstraintChain:
         """
         return [[n.value for n in node_var] for node_var in self._node_variables]
 
+
 if __name__ == '__main__':
 
     from markov import MarkovTree
+    from time import sleep
     FORMAT = '[%(levelname).1s] %(asctime)s.%(msecs)d %(name)s: %(message)s'
     DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
     logging.basicConfig(level=logging.INFO, format=FORMAT, stream=sys.stdout, datefmt=DATE_FORMAT)
@@ -149,3 +153,5 @@ if __name__ == '__main__':
         print '  '.join(seq)
         print
     print mt
+    import datetime as dt
+    dt.datetime.now()
