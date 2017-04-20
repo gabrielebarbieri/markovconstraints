@@ -1,4 +1,5 @@
 import numpy as np
+from datetime import datetime
 
 
 def div0( a, b ):
@@ -16,6 +17,9 @@ def get_alphas(A):
 def normalize(alphas, A):
     return np.diag(div0(1, alphas)) * A
 
+t = datetime.now(
+
+)
 M = np.matrix([
     [0.5, 0.25, 0.25],
     [0.5, 0, 0.5],
@@ -27,31 +31,34 @@ n = M.shape[0]
 D = {1}
 
 I = np.diag([i if i in D else 0 for i in xrange(n)])
+F = M * I  # filtered
+# print F
+# print
 
-F = M * I
 alphas = get_alphas(F)
 Z = normalize(alphas, F)
-print Z
-print
-
-F = M * np.diag(alphas)
-alphas = get_alphas(F)
-Z = normalize(alphas, F)
-print Z
-print
+# print Z
+# print
 
 F = M * np.diag(alphas)
 alphas = get_alphas(F)
 Z = normalize(alphas, F)
-print Z
-print
+# print Z
+# print
+
+F = M * np.diag(alphas)
+alphas = get_alphas(F)
+Z = normalize(alphas, F)
+# print Z
+# print
 
 
 f = p.dot(np.diag(alphas))
 alpha = f.sum()
 z = f/alpha
-print z.sum()
+# print z.sum()
 
+# print z
+# print 39.0/77, 12.0/77, 26.0/77
 
-print 39.0/77, 12.0/77, 26.0/77
-
+print datetime.now() - t
