@@ -1,3 +1,7 @@
+import numpy as np
+from collections import defaultdict
+
+
 def filter_values(matrix, values):
     """
     Filter a transition matrix, removing all the transitions towards suffixes that are not in the given list of values
@@ -25,13 +29,16 @@ def get_alphas(matrix):
     return {prefix: sum(probabilities.values()) for prefix, probabilities in matrix.items()}
 
 
-def normalize(matrix, alphas):
+def normalize(matrix, alphas=None):
     """
     Normalize a transition matrix, by multiplying each row by its normalization coefficient alpha
     :param matrix: the matrix to normalize
-    :param alphas: the normalization coefficients.
+    :param alphas: the normalization coefficients. If None, computed them on the fly. None by default
     :return: the normalized matrix
     """
+    if alphas is None:
+        alphas = get_alphas(matrix)
+
     return {prefix: {suffix: value / alphas[prefix] for suffix, value in probabilities.items()}
             for prefix, probabilities in matrix.items()}
 
@@ -44,48 +51,99 @@ def propagate_alphas(matrix, alphas):
     :param alphas: the normalization coefficients to back propagate
     :return: the modified matrix
     """
+
+    # TODO: manage order > 1
     if alphas is None:
         return matrix
-    return {prefix: {suffix: value * alphas[suffix] for suffix, value in probabilities.items() if suffix in alphas}
-            for prefix, probabilities in matrix.items()}
+
+    res = {}
+    for prefix, probabilities in matrix.iteritems():
+        tr = {}
+        for suffix, value in probabilities.iteritems():
+            try:
+                tr[suffix] = value * alphas[tuple(suffix)]
+            except KeyError:
+                pass
+        if tr:
+            res[prefix] = tr
+    return res
 
 
-def get_constrained_process(matrix, priors, constraints):
-    """
-    Compute a constrained markov process that has the same distribution that the process defined by the given
-     transition matrix and prior probabilities and that satisfy the given unary constraints
-    :param matrix: The transition matrix describing the original markov process
-    :param priors: The prior probabilities
-    :param constraints: The list of unary constraints. If an element in this list is None, implies no constraint to
-     apply
-    :return: the constrained markov process
-    """
-    alphas = None
-    process = []
-    for values in reversed(constraints[1:]):
-        filtered = filter_values(matrix, values)
-        filtered = propagate_alphas(filtered, alphas)
-        alphas = get_alphas(filtered)
-        process.append(normalize(filtered, alphas))
+def get_transition_matrix(sequences, order=1):
+    m = defaultdict(lambda: defaultdict(int))
+    for seq in sequences:
+        for n_gram in zip(*(seq[i:] for i in xrange(order + 1))):
+            prefix = n_gram[:-1]
+            suffix = n_gram[-1]
+            m[prefix][suffix] += 1.0
+    return normalize(m)
 
-    f = {k: v * alphas[k] for k, v in priors.items() if k in alphas}
-    alpha = sum(f.values())
-    process.append({k: v / alpha for (k, v) in f.items()})
-    return list(reversed(process))
+
+def get_prior_probabilities(sequences):
+    priors = defaultdict(int)
+    tot = 0
+    for seq in sequences:
+        tot += len(seq)
+        for value in seq:
+            priors[value] += 1.0
+    return {k: v / tot for (k, v) in priors.items()}
+
+
+class MarkovChain(object):
+
+    def __init__(self, matrix, priors, constraints):
+        """
+        Compute a constrained markov process that has the same distribution that the process defined by the given
+         transition matrix and prior probabilities and that satisfy the given unary constraints
+        :param matrix: The transition matrix describing the original markov process
+        :param priors: The prior probabilities
+        :param constraints: The list of unary constraints. If an element in this list is None, implies no constraint to
+         apply
+        """
+        alphas = None
+        self.matrices = []
+        for values in reversed(constraints[1:]):
+            filtered = filter_values(matrix, values)
+            filtered = propagate_alphas(filtered, alphas)
+            if not filtered:
+                raise RuntimeError('The constraints satisfaction problem has no solution. '
+                                   'Try to relax your constraints')
+            alphas = get_alphas(filtered)
+            # since the loop is going back, the current transition matrix should be prepended
+            self.matrices.insert(0, normalize(filtered, alphas))
+
+        if constraints[0] is not None:
+            f = {k: v for k, v in priors.items() if k in constraints[0]}
+        else:
+            f = priors
+        print f
+        f = {k: v * alphas[tuple(k)] for k, v in f.items() if tuple(k) in alphas}
+        alpha = sum(f.values())
+        self.priors = {k: v / alpha for (k, v) in f.items()}
+
+    def generate(self):
+        """
+        Generate a sequence according to the transition matrices and the prior probabilities
+        :return: the sequence
+        """
+        probabilities = self.priors
+        value = np.random.choice(probabilities.keys(), p=probabilities.values())
+        sequence = [value]
+        for m in self.matrices:
+            # TODO: manage higher order (the tuple here is a hack)
+            probabilities = m[tuple(value)]
+            value = np.random.choice(probabilities.keys(), p=probabilities.values())
+            sequence.append(value)
+        return sequence
 
 if __name__ == '__main__':
-    from pprint import pprint
-    M = {
-        'C': {'C': 0.5, 'D': 0.25, 'E': 0.25},
-        'D': {'C': 0.5, 'E': 0.5},
-        'E': {'C': 0.5, 'D': 0.25, 'E': 0.25}
-    }
-    p = {'C': 0.5, 'D': 1.0/6, 'E': 1.0/3}
-    c = [None, None, None, ['D']]
 
-    cp = get_constrained_process(M, p, c)
+    c = [['C'], None, None, ['D']]
 
-    print 39.0/77, 12.0/77, 26.0/77
-    for e in cp:
-        print
-        pprint(e)
+    corpus = ['ECDECC', 'CCEEDC']
+    M = get_transition_matrix(corpus)
+    p = get_prior_probabilities(corpus)
+    mc = MarkovChain(M, p, c)
+    for i in xrange(10):
+        print mc.generate()
+
