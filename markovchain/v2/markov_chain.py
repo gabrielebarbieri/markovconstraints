@@ -120,7 +120,6 @@ class MarkovChain(object):
             f = {k: v for k, v in priors.items() if k in constraints[0]}
         else:
             f = priors
-        print f
         f = {k: v * alphas[tuple(k)] for k, v in f.items() if tuple(k) in alphas}
         alpha = sum(f.values())
         self.priors = normalize_values(f, alpha)
@@ -142,11 +141,16 @@ class MarkovChain(object):
 
 if __name__ == '__main__':
 
-    c = [['C'], None, None, ['D']]
+    c = [None, None, None, ['D']]
 
     corpus = ['ECDECC', 'CCEEDC']
-    M = get_transition_matrix(corpus)
+    M = get_transition_matrix(corpus, order=2)
+    import pandas as pd
+    print pd.DataFrame.from_dict(M, orient='index')
+    print
     p = get_prior_probabilities(corpus)
     mc = MarkovChain(M, p, c)
-    for i in xrange(10):
-        print mc.generate()
+    for m in mc.matrices:
+        print m
+    # for i in xrange(10):
+    #     print mc.generate()
