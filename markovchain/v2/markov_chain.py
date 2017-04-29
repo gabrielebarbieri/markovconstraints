@@ -29,6 +29,10 @@ def get_alphas(matrix):
     return {prefix: sum(probabilities.values()) for prefix, probabilities in matrix.items()}
 
 
+def normalize_values(values, alpha):
+    return {suffix: value / alpha for suffix, value in values.items()}
+
+
 def normalize(matrix, alphas=None):
     """
     Normalize a transition matrix, by multiplying each row by its normalization coefficient alpha
@@ -39,8 +43,7 @@ def normalize(matrix, alphas=None):
     if alphas is None:
         alphas = get_alphas(matrix)
 
-    return {prefix: {suffix: value / alphas[prefix] for suffix, value in probabilities.items()}
-            for prefix, probabilities in matrix.items()}
+    return {prefix: normalize_values(probabilities, alphas[prefix]) for prefix, probabilities in matrix.items()}
 
 
 def propagate_alphas(matrix, alphas):
@@ -58,14 +61,15 @@ def propagate_alphas(matrix, alphas):
 
     res = {}
     for prefix, probabilities in matrix.iteritems():
-        tr = {}
+        transitions = {}
         for suffix, value in probabilities.iteritems():
             try:
-                tr[suffix] = value * alphas[tuple(suffix)]
+                index = prefix[1:] + (suffix,)
+                transitions[suffix] = value * alphas[index]
             except KeyError:
                 pass
-        if tr:
-            res[prefix] = tr
+        if transitions:
+            res[prefix] = transitions
     return res
 
 
@@ -86,7 +90,7 @@ def get_prior_probabilities(sequences):
         tot += len(seq)
         for value in seq:
             priors[value] += 1.0
-    return {k: v / tot for (k, v) in priors.items()}
+    return normalize_values(priors, tot)
 
 
 class MarkovChain(object):
@@ -119,7 +123,7 @@ class MarkovChain(object):
         print f
         f = {k: v * alphas[tuple(k)] for k, v in f.items() if tuple(k) in alphas}
         alpha = sum(f.values())
-        self.priors = {k: v / alpha for (k, v) in f.items()}
+        self.priors = normalize_values(f, alpha)
 
     def generate(self):
         """
@@ -146,4 +150,3 @@ if __name__ == '__main__':
     mc = MarkovChain(M, p, c)
     for i in xrange(10):
         print mc.generate()
-
