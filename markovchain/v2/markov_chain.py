@@ -26,7 +26,7 @@ def filter_values(matrix, values):
     """
     if values is None:
         return matrix
-    res = {}
+    res = TransitionMatrix(order=matrix.order)
     for prefix, probabilities in matrix.items():
         filtered = {suffix: probabilities[suffix] for suffix in probabilities if suffix in values}
         if filtered:
@@ -56,8 +56,10 @@ def normalize(matrix, alphas=None):
     """
     if alphas is None:
         alphas = get_alphas(matrix)
-
-    return {prefix: normalize_values(probabilities, alphas[prefix]) for prefix, probabilities in matrix.items()}
+    res = TransitionMatrix(matrix.order)
+    for prefix, probabilities in matrix.items():
+        res[prefix] = normalize_values(probabilities, alphas[prefix])
+    return res
 
 
 def propagate_alphas(matrix, alphas):
@@ -69,11 +71,10 @@ def propagate_alphas(matrix, alphas):
     :return: the modified matrix
     """
 
-    # TODO: manage order > 1
     if alphas is None:
         return matrix
 
-    res = {}
+    res = TransitionMatrix(matrix.order)
     for prefix, probabilities in matrix.iteritems():
         transitions = {}
         for suffix, value in probabilities.iteritems():
@@ -93,7 +94,13 @@ def propagate_alphas(matrix, alphas):
 
 
 def get_transition_matrix(sequences, order=1):
-    m = defaultdict(lambda: defaultdict(int))
+    """
+    Estimate a transition matrix from a list of sequences
+    :param sequences: the sequences to parse to estimate the transition matrix
+    :param order: the order of the matrix, i.e. the length of the prefix
+    :return: A transition matrix
+    """
+    m = TransitionMatrix(order)
     for seq in sequences:
         for n_gram in zip(*(seq[i:] for i in xrange(order + 1))):
             prefix = n_gram[:-1]
@@ -103,6 +110,12 @@ def get_transition_matrix(sequences, order=1):
 
 
 def parse_sequences(sequences, max_order):
+    """
+    Estimate a series of transition matrices with order from O to max_order
+    :param sequences: the sequences to parse to estimate the transition matrix
+    :param max_order: The maximum order
+    :return: The list of transition matrices, sorted by their orders
+    """
     return [get_transition_matrix(sequences, order) for order in xrange(max_order + 1)]
 
 
@@ -131,14 +144,14 @@ def get_markov_process(matrices, constraints):
     return markov_process
 
 
-def generate(markov_process, order):
+def generate(markov_process):
     """
     Generate a sequence according to the transition matrices and the prior probabilities
     :return: the sequence
     """
     sequence = []
     for i, m in enumerate(markov_process):
-        prefix = tuple(sequence[-min(i, order):])
+        prefix = tuple(sequence[-min(i, m.order):])
         probabilities = m[prefix]
         value = np.random.choice(probabilities.keys(), p=probabilities.values())
         sequence.append(value)
@@ -152,10 +165,10 @@ if __name__ == '__main__':
     corpus = ['ECDECC', 'CCEEDC']
     n = 2
     ms = parse_sequences(corpus, max_order=n)
-    # for m in ms:
-    #     print repr_matrix(m)
+    for m in ms:
+        print m
     mc = get_markov_process(ms, c)
-    # for m in mc:
-    #     print repr_matrix(m)
-    for i in xrange(s10):
-        print generate(mc, n)
+    for m in mc:
+        print m
+    for i in xrange(10):
+        print generate(mc)
