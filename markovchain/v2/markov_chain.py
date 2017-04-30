@@ -1,5 +1,19 @@
-import numpy as np
 from collections import defaultdict
+
+import numpy as np
+import pandas as pd
+
+
+class TransitionMatrix(defaultdict):
+
+    def __init__(self, order):
+        super(TransitionMatrix, self).__init__(lambda: defaultdict(int))
+        self.order = order
+
+    def __repr__(self):
+        if self.order > 0:
+            return str(pd.DataFrame.from_dict(self).transpose())
+        return str(pd.DataFrame(data=self[()], index=['<s>']))
 
 
 def filter_values(matrix, values):
@@ -67,7 +81,12 @@ def propagate_alphas(matrix, alphas):
                 index = prefix[1:] + (suffix,)
                 transitions[suffix] = value * alphas[index]
             except KeyError:
-                pass
+                # Back propagating to a smaller order, try to use the whole prefix as index
+                try:
+                    index = prefix + (suffix,)
+                    transitions[suffix] = value * alphas[index]
+                except KeyError:
+                    pass
         if transitions:
             res[prefix] = transitions
     return res
@@ -83,74 +102,60 @@ def get_transition_matrix(sequences, order=1):
     return normalize(m)
 
 
-def get_prior_probabilities(sequences):
-    priors = defaultdict(int)
-    tot = 0
-    for seq in sequences:
-        tot += len(seq)
-        for value in seq:
-            priors[value] += 1.0
-    return normalize_values(priors, tot)
+def parse_sequences(sequences, max_order):
+    return [get_transition_matrix(sequences, order) for order in xrange(max_order + 1)]
 
 
-class MarkovChain(object):
+def get_markov_process(matrices, constraints):
+    """
+    Compute a constrained markov process that has the same distribution that the process defined by the given
+     transition matrix and prior probabilities and that satisfy the given unary constraints
+    :param matrices: The transition matrices describing the original markov process. The n-th element in the list
+     corresponds to a transition matrix of order n
+    :param constraints: The list of unary constraints. If an element in this list is None, implies no constraint to
+     apply
+    """
+    alphas = None
+    max_order = len(matrices) - 1
+    markov_process = []
+    for index, values in reversed(list(enumerate(constraints))):
+        matrix = matrices[min(index, max_order)]  # get the smaller order matrices on the beginning of the constraints
+        filtered = filter_values(matrix, values)
+        filtered = propagate_alphas(filtered, alphas)
+        if not filtered:
+            raise RuntimeError('The constraints satisfaction problem has no solution. '
+                               'Try to relax your constraints')
+        alphas = get_alphas(filtered)
+        # since the loop is going back, the current transition matrix should be prepended
+        markov_process.insert(0, normalize(filtered, alphas))
+    return markov_process
 
-    def __init__(self, matrix, priors, constraints):
-        """
-        Compute a constrained markov process that has the same distribution that the process defined by the given
-         transition matrix and prior probabilities and that satisfy the given unary constraints
-        :param matrix: The transition matrix describing the original markov process
-        :param priors: The prior probabilities
-        :param constraints: The list of unary constraints. If an element in this list is None, implies no constraint to
-         apply
-        """
-        alphas = None
-        self.matrices = []
-        for values in reversed(constraints[1:]):
-            filtered = filter_values(matrix, values)
-            filtered = propagate_alphas(filtered, alphas)
-            if not filtered:
-                raise RuntimeError('The constraints satisfaction problem has no solution. '
-                                   'Try to relax your constraints')
-            alphas = get_alphas(filtered)
-            # since the loop is going back, the current transition matrix should be prepended
-            self.matrices.insert(0, normalize(filtered, alphas))
 
-        if constraints[0] is not None:
-            f = {k: v for k, v in priors.items() if k in constraints[0]}
-        else:
-            f = priors
-        f = {k: v * alphas[tuple(k)] for k, v in f.items() if tuple(k) in alphas}
-        alpha = sum(f.values())
-        self.priors = normalize_values(f, alpha)
-
-    def generate(self):
-        """
-        Generate a sequence according to the transition matrices and the prior probabilities
-        :return: the sequence
-        """
-        probabilities = self.priors
+def generate(markov_process, order):
+    """
+    Generate a sequence according to the transition matrices and the prior probabilities
+    :return: the sequence
+    """
+    sequence = []
+    for i, m in enumerate(markov_process):
+        prefix = tuple(sequence[-min(i, order):])
+        probabilities = m[prefix]
         value = np.random.choice(probabilities.keys(), p=probabilities.values())
-        sequence = [value]
-        for m in self.matrices:
-            # TODO: manage higher order (the tuple here is a hack)
-            probabilities = m[tuple(value)]
-            value = np.random.choice(probabilities.keys(), p=probabilities.values())
-            sequence.append(value)
-        return sequence
+        sequence.append(value)
+    return sequence
+
 
 if __name__ == '__main__':
-
+    c = [['C'], None, None, ['D']]
     c = [None, None, None, ['D']]
 
     corpus = ['ECDECC', 'CCEEDC']
-    M = get_transition_matrix(corpus, order=2)
-    import pandas as pd
-    print pd.DataFrame.from_dict(M, orient='index')
-    print
-    p = get_prior_probabilities(corpus)
-    mc = MarkovChain(M, p, c)
-    for m in mc.matrices:
-        print m
-    # for i in xrange(10):
-    #     print mc.generate()
+    n = 2
+    ms = parse_sequences(corpus, max_order=n)
+    # for m in ms:
+    #     print repr_matrix(m)
+    mc = get_markov_process(ms, c)
+    # for m in mc:
+    #     print repr_matrix(m)
+    for i in xrange(s10):
+        print generate(mc, n)
