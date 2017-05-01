@@ -1,3 +1,5 @@
 *.pyc
 .idea
 markovchain.egg-info
+.cache/
+test/__pycache__/
