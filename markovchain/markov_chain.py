@@ -150,9 +150,9 @@ def generate(markov_process):
     :return: the sequence
     """
     sequence = []
-    for i, m in enumerate(markov_process):
-        prefix = tuple(sequence[-min(i, m.order):])
-        probabilities = m[prefix]
+    for index, matrix in enumerate(markov_process):
+        prefix = tuple(sequence[-min(index, matrix.order):])
+        probabilities = matrix[prefix]
         value = np.random.choice(probabilities.keys(), p=probabilities.values())
         sequence.append(value)
     return sequence
@@ -160,7 +160,7 @@ def generate(markov_process):
 
 if __name__ == '__main__':
     c = [['C'], None, None, ['D']]
-    c = [None, None, None, ['D']]
+    # c = [None, None, None, ['D']]
 
     corpus = ['ECDECC', 'CCEEDC']
     n = 2

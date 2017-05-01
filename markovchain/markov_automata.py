@@ -1,4 +1,3 @@
-__author__ = 'gabrielebarbieri'
 from collections import defaultdict
 
 # A = <Q, E, d, q0, F >, where:
