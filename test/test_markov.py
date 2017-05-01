@@ -17,7 +17,7 @@ class TestMarkovChain(unittest.TestCase):
             assert markov_chain.generate(mc) == ['C', 'E', 'E', 'D']
 
 
-class TestSuffixTree():
+class TestSuffixTree(unittest.TestCase):
 
     def test_tree(self):
         tree = get_suffix_tree(['banana'])
