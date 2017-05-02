@@ -1,6 +1,6 @@
 from setuptools import setup
 
-requires = ['numpy', 'pandas']
+install_requires = ['numpy', 'pandas']
 
 setup(name='markovchain',
       version='0.1',
@@ -10,4 +10,5 @@ setup(name='markovchain',
       author_email='gabriele.barbieri83@gmail.com',
       license='MIT',
       packages=['markovchain'],
+      install_requires=install_requires,
       zip_safe=False)
