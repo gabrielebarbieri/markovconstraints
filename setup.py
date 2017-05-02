@@ -1,5 +1,7 @@
 from setuptools import setup
 
+requires = ['numpy', 'pandas']
+
 setup(name='markovchain',
       version='0.1',
       description='Markov constraints',
