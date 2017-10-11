@@ -149,6 +149,13 @@ def get_markov_process(matrices, constraints):
 
 
 def serialize_process(markov_process, file_path=None):
+    """
+    Serialize a markov process to json
+    :param markov_process: the process to serialize
+    :param file_path: the path of the file where the process will be serialized. If None, the serialized json is
+        returned as string by this method
+    :return: the string containing the json serialized process if file_path is None. None otherwise
+    """
     obj = [matrix.to_serializable_dict() for matrix in markov_process]
     if file_path is None:
         return json.dumps(obj)
@@ -185,4 +192,4 @@ if __name__ == '__main__':
     for i in xrange(10):
         print generate(mc)
     print
-    print serialize_process(mc, 'test.json')
+    print serialize_process(mc)
