@@ -2,6 +2,7 @@ from collections import defaultdict
 
 import numpy as np
 import pandas as pd
+import json
 
 
 class TransitionMatrix(defaultdict):
@@ -14,6 +15,9 @@ class TransitionMatrix(defaultdict):
         if self.order > 0:
             return str(pd.DataFrame.from_dict(self).transpose())
         return str(pd.DataFrame(data=self[()], index=['<s>']))
+
+    def to_serializable_dict(self):
+        return {','.join(k): v for k, v in self.items()}
 
 
 def filter_values(matrix, values):
@@ -144,6 +148,14 @@ def get_markov_process(matrices, constraints):
     return markov_process
 
 
+def serialize_process(markov_process, file_path=None):
+    obj = [matrix.to_serializable_dict() for matrix in markov_process]
+    if file_path is None:
+        return json.dumps(obj)
+    with open(file_path, 'w') as f:
+        json.dump(obj, f)
+
+
 def generate(markov_process):
     """
     Generate a sequence according to the transition matrices and the prior probabilities
@@ -172,3 +184,5 @@ if __name__ == '__main__':
         print m
     for i in xrange(10):
         print generate(mc)
+    print
+    print serialize_process(mc, 'test.json')
