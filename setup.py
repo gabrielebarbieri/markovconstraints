@@ -1,21 +1,28 @@
-from setuptools import setup
+import setuptools
 
 install_requires = ['numpy', 'pandas']
 
 
-def readme():
-    with open('README.md') as f:
-        return f.read()
+with open("README.md", "r") as fh:
+    long_description = fh.read()
 
 
-setup(name='markovconstraints',
+setuptools.setup(
+      name='markovconstraints',
       version='0.1',
       description='A Markov constraint satisfaction problem solver',
-      long_description=readme(),
+      long_description=long_description,
+      long_description_content_type="text/markdown",
       url='https://github.com/gabrielebarbieri/markovconstraints',
       author='Gabriele Barbieri',
       author_email='gabriele.barbieri83@gmail.com',
       license='MIT',
-      packages=['markovconstraints'],
+      packages=setuptools.find_packages(),
       install_requires=install_requires,
-      zip_safe=False)
+      classifiers=[
+            "Programming Language :: Python :: 3",
+            "License :: OSI Approved :: MIT License",
+            "Operating System :: OS Independent",
+      ],
+      python_requires='>=3.6',
+)
