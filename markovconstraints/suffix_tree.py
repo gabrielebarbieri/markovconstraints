@@ -45,4 +45,3 @@ def get_suffix_tree(sequences):
     for seq in sequences:
         tree.parse(seq)
     return tree
-

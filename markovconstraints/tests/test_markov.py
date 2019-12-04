@@ -1,6 +1,6 @@
 import unittest
-from markovchain import markov_chain
-from markovchain.suffix_tree import get_suffix_tree
+from markovconstraints import markov_chain
+from markovconstraints.suffix_tree import get_suffix_tree
 
 
 class TestMarkovChain(unittest.TestCase):

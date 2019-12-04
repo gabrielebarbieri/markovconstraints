@@ -31,7 +31,7 @@ class MarkovTransitions():
         return self.alphabet.setdefault(value, MarkovSymbol(value))
 
     def parse(self, seq):
-        for i in xrange(len(seq) - self.order):
+        for i in range(len(seq) - self.order):
             prefix = self.get_symbol(tuple(seq[i: i + self.order]))
             suffix = self.get_symbol(tuple(seq[i + 1: i + self.order + 1]))
             self.transitions[prefix][suffix] += 1
@@ -65,7 +65,7 @@ class MarkovAutomaton():
         q.final = True
 
         for a1, a2 in self.transitions.get_transitions()[:3]:
-            print a1, a2
+            print(a1, a2)
             q1 = a1.state
             q = self.separate(q1, a1)
             q2 = a2.state
@@ -109,6 +109,7 @@ class MarkovAutomaton():
                 s += '{:} -{:}-> {:}\n'.format(names[from_state], symbol, names[to_state])
         return s
 
+
 if __name__ == '__main__':
     mt = MarkovTransitions(1)
     mt.parse('abracadabra')
@@ -117,4 +118,4 @@ if __name__ == '__main__':
     #     print a1, a2
     ma = MarkovAutomaton(mt)
     ma.create()
-    print ma
+    print(ma)

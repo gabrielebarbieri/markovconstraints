@@ -1,4 +1,4 @@
-markovchain
+Markov Constraints
 ===========
 
 A Markov constraint satisfaction problem solver 

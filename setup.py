@@ -2,13 +2,20 @@ from setuptools import setup
 
 install_requires = ['numpy', 'pandas']
 
-setup(name='markovchain',
+
+def readme():
+    with open('README.rst') as f:
+        return f.read()
+
+
+setup(name='markovconstraints',
       version='0.1',
-      description='Markov constraints',
-      url='http://github.com/gabrielebarbieri/markovchain',
+      description='A Markov constraint satisfaction problem solver',
+      long_description=readme(),
+      url='https://github.com/gabrielebarbieri/markovconstraints',
       author='Gabriele Barbieri',
       author_email='gabriele.barbieri83@gmail.com',
       license='MIT',
-      packages=['markovchain'],
+      packages=['markovconstraints'],
       install_requires=install_requires,
       zip_safe=False)
