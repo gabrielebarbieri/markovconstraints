@@ -13,7 +13,7 @@ class TestMarkovChain(unittest.TestCase):
         n = 2
         ms = markov_chain.parse_sequences(self.corpus, max_order=n)
         mc = markov_chain.get_markov_process(ms, self.constraints)
-        for i in xrange(10):
+        for _ in range(10):
             assert markov_chain.generate(mc) == ['C', 'E', 'E', 'D']
 
 
@@ -29,6 +29,7 @@ class TestSuffixTree(unittest.TestCase):
         assert tree.get_all_orders('banane') == [5, 5, 4, 3, 2, 1]
         assert tree.get_max_order('banane') == 5
         assert tree.get_max_order('banana') == 6
+
 
 if __name__ == '__main__':
     unittest.main()

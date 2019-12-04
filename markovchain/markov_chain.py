@@ -79,9 +79,9 @@ def propagate_alphas(matrix, alphas):
         return matrix
 
     res = TransitionMatrix(matrix.order)
-    for prefix, probabilities in matrix.iteritems():
+    for prefix, probabilities in matrix.items():
         transitions = {}
-        for suffix, value in probabilities.iteritems():
+        for suffix, value in probabilities.items():
             try:
                 index = prefix[1:] + (suffix,)
                 transitions[suffix] = value * alphas[index]
@@ -106,7 +106,7 @@ def get_transition_matrix(sequences, order=1):
     """
     m = TransitionMatrix(order)
     for seq in sequences:
-        for n_gram in zip(*(seq[i:] for i in xrange(order + 1))):
+        for n_gram in zip(*(seq[i:] for i in range(order + 1))):
             prefix = n_gram[:-1]
             suffix = n_gram[-1]
             m[prefix][suffix] += 1.0
@@ -120,7 +120,7 @@ def parse_sequences(sequences, max_order):
     :param max_order: The maximum order
     :return: The list of transition matrices, sorted by their orders
     """
-    return [get_transition_matrix(sequences, order) for order in xrange(max_order + 1)]
+    return [get_transition_matrix(sequences, order) for order in range(max_order + 1)]
 
 
 def get_markov_process(matrices, constraints):
@@ -172,7 +172,7 @@ def generate(markov_process):
     for index, matrix in enumerate(markov_process):
         prefix = tuple(sequence[-min(index, matrix.order):])
         probabilities = matrix[prefix]
-        value = np.random.choice(probabilities.keys(), p=probabilities.values())
+        value = np.random.choice(list(probabilities.keys()), p=list(probabilities.values()))
         sequence.append(value)
     return sequence
 
@@ -185,11 +185,10 @@ if __name__ == '__main__':
     n = 2
     ms = parse_sequences(corpus, max_order=n)
     for m in ms:
-        print m
+        print(m)
     mc = get_markov_process(ms, c)
     for m in mc:
-        print m
-    for i in xrange(10):
-        print generate(mc)
-    print
-    print serialize_process(mc)
+        print(m)
+    for i in range(10):
+        print(generate(mc))
+    print(serialize_process(mc))
