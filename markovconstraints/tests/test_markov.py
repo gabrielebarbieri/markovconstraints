@@ -12,9 +12,9 @@ class TestMarkovChain(unittest.TestCase):
 
         n = 2
         ms = markov_chain.parse_sequences(self.corpus, max_order=n)
-        mc = markov_chain.get_markov_process(ms, self.constraints)
+        mc = markov_chain.MarkovProcess(ms, self.constraints)
         for _ in range(10):
-            assert markov_chain.generate(mc) == ['C', 'E', 'E', 'D']
+            assert mc.generate() == ['C', 'E', 'E', 'D']
 
 
 class TestSuffixTree(unittest.TestCase):
