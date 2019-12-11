@@ -1,27 +1,25 @@
 from collections import defaultdict
 
 import numpy as np
-import pandas as pd
 import json
 
 
 class TransitionMatrix(defaultdict):
 
     def __init__(self, order):
-        super(TransitionMatrix, self).__init__(lambda: defaultdict(int))
+        super().__init__(lambda: defaultdict(int))
         self.order = order
 
     def __repr__(self):
-        if self.order > 0:
-            return str(pd.DataFrame.from_dict(self).transpose())
-        return str(pd.DataFrame(data=self[()], index=['<s>']))
+        return '\n'.join(f'{k} => {v}' for k, v in self.items())
 
     def to_serializable_dict(self):
         return {','.join(k): v for k, v in self.items()}
 
     def filter_values(self, values):
         """
-        Filter a transition matrix, removing all the transitions towards suffixes that are not in the given list of values
+        Filter a transition matrix, removing all the transitions towards suffixes that are not in the given list of
+        values.
         If values is None, do nothing
         :param self: the matrix to filter
         :param values: the list of suffix values to keep.
@@ -29,7 +27,7 @@ class TransitionMatrix(defaultdict):
         """
         if values is None:
             return self
-        filtered_matrix = TransitionMatrix(order=self.order)
+        filtered_matrix = TransitionMatrix(self.order)
         for prefix, probabilities in self.items():
             filtered_probabilities = {suffix: probabilities[suffix] for suffix in probabilities if suffix in values}
             if filtered_probabilities:
@@ -70,7 +68,6 @@ class TransitionMatrix(defaultdict):
 
         if alphas is None:
             return self
-
         res = TransitionMatrix(self.order)
         for prefix, probabilities in self.items():
             transitions = {}
@@ -177,9 +174,12 @@ if __name__ == '__main__':
     ms = parse_sequences(corpus, max_order=n)
     for m in ms:
         print(m)
+        print()
+    print('-' * 80)
     mc = MarkovProcess(ms, c)
     for m in mc.matrices:
         print(m)
+        print()
     for i in range(10):
         print(mc.generate())
     print(mc.serialize_process())

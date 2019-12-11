@@ -1,6 +1,6 @@
 import setuptools
 
-install_requires = ['numpy', 'pandas']
+install_requires = ['numpy']
 
 
 with open("README.md", "r") as fh:
