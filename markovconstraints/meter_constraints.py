@@ -1,4 +1,4 @@
-from markovconstraints.markov_chain import get_transition_matrix, TransitionMatrix
+from markovconstraints.markov_chain import parse_sequences
 from collections import defaultdict
 from math import floor
 from random import choice
@@ -9,11 +9,9 @@ from random import choice
 
 class MeterConstraint:
 
-    def __init__(self, sequences, cost, predicate, length, compute_cost_sets=True):
-        self.matrix = TransitionMatrix(1)
-        for x, value in get_transition_matrix(sequences).items():
-            self.matrix[x[0]] = value
-        self.alphabet = sorted([e for e in self.matrix.keys()])
+    def __init__(self, sequences, cost, predicate, length, order=1, compute_cost_sets=True):
+        self.matrices = parse_sequences(sequences, max_order=order)
+        self.alphabet = list(self.matrices[0][()])
         self.cost = cost
         self._predicate = predicate
         self.length = length
@@ -25,28 +23,34 @@ class MeterConstraint:
         return self._predicate(c, self.cost(y), k)
 
     def compute_cost_set(self):
+        matrix = self.matrices[1]
         for x in self.alphabet:
             k = 0
             if self.predicate(0, x, k):
                 self.cost_set[(x, k)].add(self.cost(x))
         for k in range(self.length - 1):
             for x in self.alphabet:
-                for y in self.matrix[x]:
+                for y in matrix[(x,)]:
                     for c in self.cost_set[(x, k)]:
                         if self.predicate(c, y, k+1):
                             self.cost_set[(y, k+1)].add(c + self.cost(y))
         for k in reversed(range(self.length - 1)):
             for x in self.alphabet:
                 cost_set = set()
-                for y in self.matrix[x]:
+                for y in matrix[(x,)]:
                     for c in self.cost_set[(y, k+1)]:
                         if self.predicate(c - self.cost(y), y, k+1):
                             cost_set.add(c - self.cost(y))
                 self.cost_set[(x, k)] = self.cost_set[(x, k)].intersection(cost_set)
 
-    def generate_next(self, x, k, c):
-        elements = [y for y in self.matrix[x] if c + self.cost(y) in self.cost_set[(y, k+1)]]
-        return choice(elements)
+    def generate_next(self, prefix, k, c):
+        max_order = len(prefix)
+        for i in range(len(prefix)):
+            order = max_order - i
+            print(order)
+            elements = [y for y in self.matrices[order][prefix[i:]] if c + self.cost(y) in self.cost_set[(y, k+1)]]
+            if elements:
+                return choice(elements)
 
     def generate(self):
         sequence = []
@@ -55,15 +59,15 @@ class MeterConstraint:
         e = choice(priors)
         sequence.append(e)
         c += self.cost(e)
-        for k in range(self.length -1):
-            e = self.generate_next(sequence[-1], k, c)
+        for k in range(self.length-1):
+            prefix = tuple(sequence[-min(k, len(self.matrices)-1):])
+            e = self.generate_next(prefix, k, c)
             sequence.append(e)
             c += self.cost(e)
         return sequence
 
 
 if __name__ == '__main__':
-    seq = [[1, 2, 3, 4, 3, 2, 1, 0, 0], [1, 2, 4, 2, 1, 0]]
 
     def pred(c, x, k):
         c1 = c + x
@@ -73,5 +77,8 @@ if __name__ == '__main__':
             return False
         return True
 
-    g = MeterConstraint(seq, int, pred, 18)
+    seq = [[1, 2, 3, 4, 3, 2, 1, 0, 0], [1, 2, 4, 2, 1, 0]]
+
+    g = MeterConstraint(seq, int, pred, 18, order=3)
+    # print(g.matrix)
     print(g.generate())
