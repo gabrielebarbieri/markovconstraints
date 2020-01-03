@@ -85,7 +85,7 @@ class MeterConstraint:
     def generate(self):
         sequence = []
         c = 0
-        priors = [x for x, values in g.cost_set[0].items() if values]
+        priors = [x for x, values in self.cost_set[0].items() if values]
         e = choice(priors)[0]
         sequence.append(e)
         c += self.cost(e)
@@ -112,5 +112,5 @@ if __name__ == '__main__':
 
     # seq = [[2, 2, 2, 1, 2, 3, 1, 1, 2, 1, 1, 0, 0, 0]]
 
-    g = MeterConstraint(seq, int, pred, 18, order=2)
-    print(g.generate())
+    mc = MeterConstraint(seq, int, pred, 18, order=2)
+    print(mc.generate())
